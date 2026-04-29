@@ -2,6 +2,8 @@
 
 SteelDefectX is a vision-language dataset for steel surface defect analysis, containing **7,778 images** across **25 defect categories**. Built by unifying four public benchmarks (NEU, GC10, X-SDD, and S3D), it provides **multi-form textual annotations** at both class and sample levels, alongside pixel-level segmentation masks. The dataset is designed to enable vision-language learning, industrial anomaly detection, and cross-dataset transfer research.
 
+The dataset is available on [Hugging Face Dataset](https://huggingface.co/datasets/Zhaosxian/SteelDefectX). 
+
 ## Dataset Structure
 
 ```text
