@@ -1,8 +1,32 @@
-# SteelDefectX Dataset
+# SteelDefectX 
 
-SteelDefectX is a vision-language dataset for steel surface defect analysis, containing **7,778 images** across **25 defect categories**. Built by unifying four public benchmarks (NEU, GC10, X-SDD, and S3D), it provides **multi-form textual annotations** at both class and sample levels, alongside pixel-level segmentation masks. The dataset is designed to enable vision-language learning, industrial anomaly detection, and cross-dataset transfer research.
+<p align="center">
+  <strong>A Multi-Form Vision-Language Dataset and Benchmark for Steel Surface Defect Analysis</strong>
+</p>
 
-The dataset is available on [Hugging Face Dataset](https://huggingface.co/datasets/Zhaosxian/SteelDefectX). 
+<p align="center">
+  <a href="https://huggingface.co/datasets/Zhaosxian/SteelDefectX">🤗 Dataset on Hugging Face</a>
+</p>
+
+<p align="center">
+  <img src="./fig1.png" alt="SteelDefectX overview figure" width="900">
+</p>
+
+<p align="center">
+  <img alt="Dataset size" src="https://img.shields.io/badge/images-7%2C778-blue">
+  <img alt="Defect categories" src="https://img.shields.io/badge/categories-25-teal">
+  <img alt="Text forms" src="https://img.shields.io/badge/text%20forms-T1%20%7C%20T2%20%7C%20T3%20%7C%20T4-darkgreen">
+  <img alt="Split" src="https://img.shields.io/badge/split-train%2Fval%20%287%3A3%29-orange">
+</p>
+
+SteelDefectX is a multi-form vision-language dataset that unifies four public industrial defect benchmarks into a single steel-surface dataset. It provides pixel-level masks, class-level descriptions (T1), and three complementary sample-level text annotations (T2–T4), enabling controllable and interpretable vision-language learning.
+
+| Text form | Field | Role |
+| :---: | --- | --- |
+| T1 | `class-level description` | Provides category-level semantics, including defect name, representative visual attributes, and potential industrial causes |
+| T2 | `natural_language_description` | Free-form image-level description with rich visual semantics |
+| T3 | `structured_attributes` | Nine-field attribute representation for stable and controllable supervision |
+| T4 | `template_sentence` | Linearized T3 representation for standardized and consistent text prompts |
 
 ## Dataset Structure
 
@@ -17,57 +41,96 @@ SteelDefectX/
 └── val-text.json
 ```
 
-## Files
+## Annotation Schema
 
-- `train/` & `val/`: training and validation images (7:3 split, ~5,454 train / ~2,324 val).
-- `train_mask/` & `val_mask/`: pixel-level binary segmentation masks.
-- `train-text.json` & `val-text.json`: per-sample annotations with multiple text forms.
-- `class_descriptions.json`: class-level textual descriptions (name, visual attributes, industrial causes).
-
-## Annotation Format
-
-Each sample-level annotation includes **three complementary text forms** to support diverse vision-language tasks:
-
-### Multi-Form Text Annotations
-
-- **T2 (Natural Language Description)**: Free-form, richly expressive descriptions generated via GPT-4o and refined through semantic similarity filtering and manual validation. Covers appearance, shape, size, depth, position, and contrast.
-  
-- **T3 (Structured Attributes)**: Compact, standardized representation with nine fields: defect type, shape, direction, spatial distribution, number of defects, position (3×3 grid), scale, polarity, and saliency. Derived from segmentation masks and constrained LLM prediction for reproducibility.
-
-- **T4 (Template Sentence)**: Linearized structured attributes into a consistent sentence pattern. Balances semantic completeness with linguistic conciseness for controllable text-guided applications.
-
-### Example Annotation
+Each sample is organized as:
 
 ```json
 {
   "image_name": "bs_01.jpg",
   "class_name": "Bright scratch",
-  "natural_language_description": "The bright scratch defect appears as a thin, vertical line on the steel surface...",
+  "natural_language_description": "The bright scratch defect appears as a thin, vertical line on the steel surface. It is light in color, contrasting against the darker background. The line is straight and extends from near the top to almost the bottom. Its width is consistent, and it does not appear deep. The position is slightly right of center on the surface.",
   "structured_attributes": {
     "Defect type": "Bright scratch",
     "Shape": "linear",
     "Direction": "vertical",
     "Spatial Distribution": "isolated",
     "Number of Defects": "one",
-    "Position": [["bottom-center", 0.467], ["center", 0.416]],
+    "Position": [["bottom-center", 0.466667], ["center", 0.415504], ["bottom-right", 0.052713], ["middle-right",0.049612], ["top-center", 0.015504]],
     "Scale": "tiny",
     "Polarity": "bright",
     "Saliency": "medium"
   },
-  "template_sentence": "A tiny bright Bright scratch is observed on the steel surface. It has a linear shape..."
+  "template_sentence": "A tiny bright Bright scratch is observed on the steel surface. It has a linear shape. It extends in a vertical direction. The defects are isolated, consisting of one region(s), mainly located at bottom-center and center. The defect exhibits medium saliency."
 }
 ```
 
-## Supported Defect Classes
+## Annotation Pipeline
 
-25 categories: Bright scratch, Crazing, Crease, Crescent gap, Dark scratches, Finishing roll printing, Inclusion, Iron scale compression, Iron sheet ash, Oil spot, Oxide scale of plate system, Oxide scale of temperature system, Patches, Pitted surface, Punching, Red iron sheet, Rolled in scale, Rolled pit, Secondary rust skin, Silk spot, Slag inclusion, Waist folding, Water spot, Welding line, White rust.
+### 1. Generate T2 Descriptions
+
+Script: `generate_natural_language_descriptions.py`
+
+Example:
+
+```bash
+export OPENAI_API_KEY=YOUR_KEY
+
+python generate_natural_language_descriptions.py \
+  --input-dir train \
+  --output-json train_t2.json \
+  --embedding-model-path saved_model \
+  --model-name gpt-4o
+```
+
+### 2. Compute Deterministic Statistics
+
+Script: `data_analysis.py`
+
+Example:
+
+```bash
+python data_analysis.py \
+  --image-dir train \
+  --mask-dir train_mask \
+  --output-dir analysis_outputs/train
+```
+
+Outputs:
+
+- `per_image_statistics.csv`
+- `global_summary.json`
+- Histogram plots for scale, polarity, saliency, component count, and largest-component ratio
+
+### 3. Build T3 and T4 Annotations
+
+Script: `build_structured_text_annotations.py`
+
+Example:
+
+```bash
+export OPENAI_API_KEY=YOUR_KEY
+
+python build_structured_text_annotations.py \
+  --input-json train_t2.json \
+  --image-dir train \
+  --mask-dir train_mask \
+  --output-json train-text.json \
+  --statistics-output-dir analysis_outputs/train
+```
+
+If `--statistics-output-dir` is omitted, the script still computes the required statistics internally but does not export the intermediate CSV, JSON, or plots.
 
 ## Technical Notes
 
-- **Data Source**: Unified taxonomy from NEU, GC10, X-SDD, and S3D public benchmarks.
-- **Image Resolution**: All images standardized to 256×256 pixels.
-- **Mask Format**: Binary PNG images; foreground pixels denote defect regions.
-- **Annotation Quality**: Sample-level T2 descriptions validated via ~275 hours of manual review for terminology consistency and completeness.
-
+- Data sources: [NEU](https://pan.baidu.com/s/1l_RjTP7aTwr57ahcwelTpA), [GC10](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets), [X-SDD](https://github.com/Fighter20092392/X-SDD-A-New-benchmark), and [S3D](https://github.com/VDT-2048/ETD).
+- Image resolution: all images are standardized to `256 x 256`.
+- Mask format: binary PNG masks where foreground pixels indicate defect regions.
+- Runtime secrets should be provided with environment variables such as `OPENAI_API_KEY`.
+- `OPENAI_API_BASE` can be set when using an OpenAI-compatible endpoint.
 
 See the associated paper for detailed methodology on multi-form annotation generation and comprehensive benchmark results.
+
+## Citation
+
+If you use this dataset, please cite the associated paper.
