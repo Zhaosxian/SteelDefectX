@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="./fig1.png" alt="SteelDefectX overview figure" width="900">
+  <img src="./Figure/fig1.png" alt="SteelDefectX overview figure" width="900">
 </p>
 
 <p align="center">
